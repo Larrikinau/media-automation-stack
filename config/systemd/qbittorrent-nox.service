@@ -1,0 +1,36 @@
+# Systemd service file for qBittorrent-nox
+# Location: /etc/systemd/system/qbittorrent-nox.service
+# This runs qBittorrent as a daemon on the download server
+
+[Unit]
+Description=qBittorrent-nox
+After=network.target
+
+[Service]
+Type=forking
+User=qbittorrent
+Group=qbittorrent
+UMask=002
+ExecStart=/usr/bin/qbittorrent-nox --daemon --webui-port=8080
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=300
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/qbittorrent
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
