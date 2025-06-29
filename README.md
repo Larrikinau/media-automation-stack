@@ -147,6 +147,8 @@ Here's the high-level process:
    - **Prowlarr** (Indexer Management) - Port 9696
    - **NZBGet** (Newsgroup Downloads) - Port 6789
    - **Overseerr** (Request Interface) - Port 5055
+     
+     > **X-Rated Content Blocking**: For those who want to prevent pornographic material from appearing in Overseerr searches and discovery, a modified version is available: [overseerr-family-friendly](https://github.com/Larrikinau/overseerr-family-friendly)
    
    **⚠️ CRITICAL: SSH Optimization Required**
    ```bash
