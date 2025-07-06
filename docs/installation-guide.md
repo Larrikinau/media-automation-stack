@@ -295,7 +295,7 @@ sudo systemctl enable snap.overseerr.daemon
 
 **Option 2: Enhanced Overseerr with User-Configurable Content Rating Filtering (Recommended)**
 
-For families and organizations wanting comprehensive content filtering with user-configurable age rating controls:
+For families wanting comprehensive content filtering with user-configurable age rating controls:
 
 ```bash
 # Quick Installation (Recommended)
