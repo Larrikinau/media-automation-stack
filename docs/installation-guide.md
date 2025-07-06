@@ -281,7 +281,9 @@ sudo systemctl enable nzbget
 sudo systemctl start nzbget
 ```
 
-#### Install Overseerr
+#### Install Overseerr with Content Filtering
+
+**Option 1: Standard Overseerr Installation**
 ```bash
 # Install Overseerr via Snap (simplest method)
 sudo snap install overseerr
@@ -290,6 +292,36 @@ sudo snap install overseerr
 sudo systemctl start snap.overseerr.daemon
 sudo systemctl enable snap.overseerr.daemon
 ```
+
+**Option 2: Enhanced Overseerr with User-Configurable Content Rating Filtering (Recommended)**
+
+For families and organizations wanting comprehensive content filtering with user-configurable age rating controls:
+
+```bash
+# Quick Installation (Recommended)
+curl -fsSL https://raw.githubusercontent.com/Larrikinau/overseerr-content-filtering/main/install-overseerr-filtering.sh | sudo bash
+```
+
+**Alternative: Build from Source**
+```bash
+# Clone and build the content filtering version
+git clone https://github.com/Larrikinau/overseerr-content-filtering.git
+cd overseerr-content-filtering
+yarn install
+yarn build
+yarn start
+```
+
+**Enhanced Features with Content Filtering:**
+- ✅ **Movie Rating Controls**: G, PG, PG-13, R, NC-17, Adult
+- ✅ **TV Rating Controls**: TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA
+- ✅ **Per-User Preferences**: Each user can set their own maximum allowed ratings
+- ✅ **Professional Distribution**: Pre-compiled packages with one-command installation
+- ✅ **Family-Safe Defaults**: Safe settings out of the box
+- ✅ **Seamless Migration**: Drop-in replacement for original Overseerr
+- ✅ **Complete Documentation**: Professional installation and usage guides
+
+**For complete documentation:** [Overseerr Content Filtering](https://github.com/Larrikinau/overseerr-content-filtering)
 
 ### 4. Configure Services
 
