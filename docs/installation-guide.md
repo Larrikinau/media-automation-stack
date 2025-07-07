@@ -315,7 +315,6 @@ yarn start
 **Enhanced Features with Content Filtering:**
 - ✅ **Movie Rating Controls**: G, PG, PG-13, R, NC-17, Adult
 - ✅ **TV Rating Controls**: TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA
-- ✅ **Per-User Preferences**: Each user can set their own maximum allowed ratings
 - ✅ **Professional Distribution**: Pre-compiled packages with one-command installation
 - ✅ **Family-Safe Defaults**: Safe settings out of the box
 - ✅ **Seamless Migration**: Drop-in replacement for original Overseerr
