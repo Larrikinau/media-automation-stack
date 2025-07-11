@@ -148,7 +148,7 @@ Here's the high-level process:
    - **NZBGet** (Newsgroup Downloads) - Port 6789
    - **Overseerr** (Request Interface) - Port 5055
      
-     > **📍 Enhanced Content Filtering**: For families wanting comprehensive content filtering, an enhanced version with user-configurable age rating controls is available: [overseerr-content-filtering](https://github.com/Larrikinau/overseerr-content-filtering). Features movie ratings (G, PG, PG-13, R, NC-17) and TV ratings (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA) with per-user preferences.
+     > **📍 Enhanced Content Filtering**: For families wanting comprehensive content filtering, an enhanced version with admin-controlled age rating controls is available: [overseerr-content-filtering](https://github.com/Larrikinau/overseerr-content-filtering). Features movie ratings (G, PG, PG-13, R, NC-17) and TV ratings (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA) with centralized admin management and global adult content blocking.
    
    **⚠️ CRITICAL: SSH Optimization Required**
    ```bash
