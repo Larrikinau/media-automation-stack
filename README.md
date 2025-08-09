@@ -148,7 +148,7 @@ Here's the high-level process:
    - **NZBGet** (Newsgroup Downloads) - Port 6789
    - **Overseerr** (Request Interface) - Port 5055
      
-     > **📍 Enhanced Content Filtering**: For families wanting comprehensive content filtering, an enhanced version with user-configurable age rating controls is available: [overseerr-content-filtering](https://github.com/Larrikinau/overseerr-content-filtering). Features movie ratings (G, PG, PG-13, R, NC-17) and TV ratings (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA) with per-user preferences.
+     > **📍 Enhanced Content Filtering**: For families wanting comprehensive content filtering, an enhanced version with admin-controlled age rating controls is available: [overseerr-content-filtering](https://github.com/Larrikinau/overseerr-content-filtering). Features movie ratings (G, PG, PG-13, R, NC-17) and TV ratings (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA) where admins can set different rating limits for each individual user, with global adult content blocking and centralized management.
    
    **⚠️ CRITICAL: SSH Optimization Required**
    ```bash
@@ -303,12 +303,14 @@ These configs show:
 
 - **Remote Torrent Architecture**: Designed for separated download/media servers
 - **Parallel Processing**: Queue system prevents resource exhaustion
-- **Smart Extraction**: Handles complex RAR archives automatically
+- **Smart Extraction**: Handles complex RAR archives automatically (including 24+ hour extractions)
+- **Automated Import Recovery**: Handles Radarr timeout issues with large files
 - **Bandwidth Optimization**: Excludes unnecessary files from upload
 - **Robust Error Handling**: Retries and fallback mechanisms
 - **Two-Source Support**: Both BitTorrent and Newsgroups
 - **Production-Ready**: Based on real working configurations
 - **Secure External Access**: Overseerr protected via Cloudflare tunnel
+- **Large File Support**: Fixed critical syntax errors affecting 4K/large movie processing
 
 ## 🌐 Network Requirements
 
