@@ -5,6 +5,7 @@
 set -euo pipefail
 
 RADARR_API_URL="http://localhost:7878/api/v3"
+RADARR_API_KEY="YOUR_RADARR_API_KEY_HERE"
 INCOMING_DIR="/tank/incomingmovies"
 LOG_FILE="$HOME/radarr-manual-import.log"
 
@@ -25,11 +26,16 @@ find "$INCOMING_DIR" -maxdepth 1 -type d -name "*" ! -name "incomingmovies" | wh
         echo "$(date +'%F %T') Triggering manual import for: $movie_name" >> "$LOG_FILE"
         
         # Use Radarr API to trigger a rescan that will find and import the files
-        curl -s -X POST "$RADARR_API_URL/command" \
+        response=$(curl -s -X POST "$RADARR_API_URL/command" \
             -H "Content-Type: application/json" \
-            -d '{"name":"RescanMovie"}' || true
+            -H "X-Api-Key: $RADARR_API_KEY" \
+            -d '{"name":"RescanMovie"}' || echo "API_ERROR")
             
-        echo "$(date +'%F %T') Rescan command sent for: $movie_name" >> "$LOG_FILE"
+        if [[ "$response" == "API_ERROR" ]]; then
+            echo "$(date +'%F %T') ERROR: API call failed for: $movie_name" >> "$LOG_FILE"
+        else
+            echo "$(date +'%F %T') SUCCESS: Rescan command sent for: $movie_name" >> "$LOG_FILE"
+        fi
     fi
 done
 
