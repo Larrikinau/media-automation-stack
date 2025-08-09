@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Automated manual import for Radarr - handles long extraction timeouts
-# This script automatically processes movies that appear in the incoming directory
-# regardless of Radarr's download client timeout status
+# Automated manual import for Radarr - scans incoming directory only
+# This script uses DownloadedMoviesScan to process completed downloads
+# without scanning the entire movie library
 set -euo pipefail
 
 RADARR_API_URL="http://localhost:7878/api/v3"
@@ -9,34 +9,27 @@ RADARR_API_KEY="YOUR_RADARR_API_KEY_HERE"
 INCOMING_DIR="/tank/incomingmovies"
 LOG_FILE="$HOME/radarr-manual-import.log"
 
-echo "$(date +'%F %T') Starting manual import scan" >> "$LOG_FILE"
+echo "$(date +'%F %T') Starting DownloadedMoviesScan for incoming directory" >> "$LOG_FILE"
 
-# Find directories in incoming that might contain completed movies
-find "$INCOMING_DIR" -maxdepth 1 -type d -name "*" ! -name "incomingmovies" | while read -r movie_dir; do
-    if [[ -z "$movie_dir" ]]; then
-        continue
-    fi
-    
-    # Check if directory contains video files
-    if find "$movie_dir" -name "*.mkv" -o -name "*.mp4" -o -name "*.avi" -o -name "*.m4v" | grep -q .; then
-        echo "$(date +'%F %T') Found video files in: $movie_dir" >> "$LOG_FILE"
-        
-        # Trigger Radarr manual import for this directory
-        movie_name=$(basename "$movie_dir")
-        echo "$(date +'%F %T') Triggering manual import for: $movie_name" >> "$LOG_FILE"
-        
-        # Use Radarr API to trigger a rescan that will find and import the files
-        response=$(curl -s -X POST "$RADARR_API_URL/command" \
-            -H "Content-Type: application/json" \
-            -H "X-Api-Key: $RADARR_API_KEY" \
-            -d '{"name":"RescanMovie"}' || echo "API_ERROR")
-            
-        if [[ "$response" == "API_ERROR" ]]; then
-            echo "$(date +'%F %T') ERROR: API call failed for: $movie_name" >> "$LOG_FILE"
-        else
-            echo "$(date +'%F %T') SUCCESS: Rescan command sent for: $movie_name" >> "$LOG_FILE"
-        fi
-    fi
-done
+# Check if there are any directories in incoming
+dir_count=$(find "$INCOMING_DIR" -maxdepth 1 -type d -name "*" ! -name "incomingmovies" | wc -l)
+if [ "$dir_count" -eq 0 ]; then
+    echo "$(date +'%F %T') No directories found in incoming" >> "$LOG_FILE"
+    exit 0
+fi
+
+echo "$(date +'%F %T') Found $dir_count directories to process" >> "$LOG_FILE"
+
+# Trigger DownloadedMoviesScan which specifically processes completed downloads
+response=$(curl -s -X POST "$RADARR_API_URL/command" \
+    -H "Content-Type: application/json" \
+    -H "X-Api-Key: $RADARR_API_KEY" \
+    -d '{"name":"DownloadedMoviesScan","path":"'$INCOMING_DIR'"}' || echo "API_ERROR")
+
+if [[ "$response" == "API_ERROR" ]]; then
+    echo "$(date +'%F %T') ERROR: DownloadedMoviesScan API call failed" >> "$LOG_FILE"
+else
+    echo "$(date +'%F %T') SUCCESS: DownloadedMoviesScan triggered for $INCOMING_DIR" >> "$LOG_FILE"
+fi
 
 echo "$(date +'%F %T') Manual import scan complete" >> "$LOG_FILE"

@@ -26,7 +26,7 @@ This system provides a complete automated solution that handles even 24+ hour ex
 1. **Torrent downloads** → **Long RAR extraction begins** (10-24+ hours)
 2. **Radarr times out** and marks as "failed" (normal behavior)
 3. **Extraction completes** → **rclone transfers files** → **Files arrive in `/tank/incomingmovies/`**
-4. **Automated scanner runs** every 15 minutes checking for completed movies
+4. **Automated scanner runs** every 15 minutes checking incoming directory only
 5. **Radarr immediately imports** and moves files to final location
 
 ### Files Added to Your System
@@ -115,7 +115,7 @@ crontab -l | grep radarr-manual-import
 # Check recent log entries
 tail -f ~/radarr-manual-import.log
 
-# Manually trigger import scan
+# Manually trigger import scan (only scans incoming directory)
 ./radarr-manual-import.sh
 ```
 
