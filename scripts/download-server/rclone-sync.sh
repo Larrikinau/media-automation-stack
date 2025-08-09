@@ -42,6 +42,15 @@ if [[ -f "${rar_files[0]}" ]]; then
   echo "$(date +'%F %T') NOTICE: RAR archive detected – extracting" >> "$DEBUG_LOG"
   rar_found=true
   
+  # Calculate total RAR archive size for monitoring with proper sanitization
+  raw_size=$(find "$src_dir" -name "*.r[0-9]*" -o -name "*.rar" 2>/dev/null | xargs du -cb 2>/dev/null | tail -1 | cut -f1 2>/dev/null || echo "0")
+  total_rar_size=$(echo "$raw_size" | tr -d '\n' | tr -d ' ')
+  # Ensure it's a valid number
+  if ! [[ "$total_rar_size" =~ ^[0-9]+$ ]]; then
+    total_rar_size=0
+  fi
+  echo "$(date +'%F %T') RAR_SIZE: Total archive size ${total_rar_size} bytes" >> "$DEBUG_LOG"
+  
   # Find the main RAR file (usually .rar, not .r00, .r01, etc.)
   main_rar=""
   for rar_file in "${rar_files[@]}"; do
@@ -57,12 +66,22 @@ if [[ -f "${rar_files[0]}" ]]; then
   fi
   
   if [[ -f "$main_rar" ]]; then
-    echo "$(date +'%F %T') EXTRACTING: $main_rar" >> "$DEBUG_LOG"
+    extraction_start=$(date +%s)
+    echo "$(date +'%F %T') EXTRACTING: $main_rar (estimated size: $total_rar_size bytes)" >> "$DEBUG_LOG"
     
-    # Extract to the same directory
+    # Extract to the same directory with better error handling and progress tracking
     cd "$src_dir"
-    if unrar e "$(basename "$main_rar")" >/dev/null 2>&1; then
-      echo "$(date +'%F %T') SUCCESS: RAR extraction completed" >> "$DEBUG_LOG"
+    
+    # Use timeout for very large files to prevent indefinite hangs
+    extraction_timeout=7200  # 2 hours max
+    if [[ $total_rar_size -gt 10737418240 ]]; then  # >10GB
+      extraction_timeout=14400  # 4 hours for very large files
+    fi
+    
+    if timeout $extraction_timeout unrar e "$(basename "$main_rar")" >/dev/null 2>&1; then
+      extraction_end=$(date +%s)
+      extraction_time=$((extraction_end - extraction_start))
+      echo "$(date +'%F %T') SUCCESS: RAR extraction completed in ${extraction_time}s" >> "$DEBUG_LOG"
       
       # Check if extraction produced media files
       media_files=()
@@ -72,15 +91,18 @@ if [[ -f "${rar_files[0]}" ]]; then
       
       if [[ ${#media_files[@]} -gt 0 ]]; then
         echo "$(date +'%F %T') FOUND ${#media_files[@]} media file(s) after extraction" >> "$DEBUG_LOG"
-        # List the media files found
+        # List the media files found with sizes
         for file in "${media_files[@]}"; do
-          echo "$(date +'%F %T') MEDIA: $(basename "$file")" >> "$DEBUG_LOG"
+          file_size=$(stat -c%s "$file" 2>/dev/null || echo "unknown")
+          echo "$(date +'%F %T') MEDIA: $(basename "$file") (${file_size} bytes)" >> "$DEBUG_LOG"
         done
       else
         echo "$(date +'%F %T') WARNING: No media files found after extraction" >> "$DEBUG_LOG"
       fi
     else
-      echo "$(date +'%F %T') ERROR: RAR extraction failed" >> "$DEBUG_LOG"
+      extraction_end=$(date +%s)
+      extraction_time=$((extraction_end - extraction_start))
+      echo "$(date +'%F %T') ERROR: RAR extraction failed or timed out after ${extraction_time}s" >> "$DEBUG_LOG"
       rar_found=false
     fi
   else
@@ -127,28 +149,97 @@ if [[ "$rar_found" == true ]]; then
 fi
 
 # ── Copy to staging ─────────────────────────────────────────────────────────
+copy_start=$(date +%s)
 echo "$(date +'%F %T') ➡️  COPY   $src_dir → $dst_stage" >> "$DEBUG_LOG"
-"$RCLONE" --config "$RCLONE_CFG" copy "$src_dir" "$dst_stage" \
-    --transfers 12 --multi-thread-streams 24 --multi-thread-cutoff 5M \
-    --sftp-concurrency 96 --checkers 24 --sftp-use-fstat=false --use-mmap \
-    --sftp-disable-hashcheck --buffer-size 256M \
-    --timeout 5m --contimeout 1m --sftp-idle-timeout 5m \
-    --retries 8 --retries-sleep 10s --low-level-retries 10 \
+
+# Adjust parameters based on file sizes and types
+transfers=12
+concurrency=96
+buffer_size="256M"
+timeout="10m"  # Increased from 5m
+idle_timeout="10m"  # Increased from 5m
+
+# For large extractions, reduce concurrency to prevent overwhelming the connection
+if [[ "$rar_found" == true ]] && [[ $total_rar_size -gt 5368709120 ]]; then  # >5GB
+  transfers=8
+  concurrency=64
+  timeout="20m"  # Much longer timeout for large files
+  idle_timeout="15m"
+  echo "$(date +'%F %T') NOTICE: Using reduced concurrency for large RAR content" >> "$DEBUG_LOG"
+fi
+
+if ! "$RCLONE" --config "$RCLONE_CFG" copy "$src_dir" "$dst_stage" \
+    --transfers $transfers --multi-thread-streams 24 --multi-thread-cutoff 5M \
+    --sftp-concurrency $concurrency --checkers 24 --sftp-use-fstat=false --use-mmap \
+    --sftp-disable-hashcheck --buffer-size "$buffer_size" \
+    --timeout "$timeout" --contimeout 2m --sftp-idle-timeout "$idle_timeout" \
+    --retries 12 --retries-sleep 15s --low-level-retries 15 \
     "${exclude_args[@]}" \
     --ignore-checksum \
-    --log-file "$HOME/rclone-sync.log" --log-level INFO
+    --log-file "$HOME/rclone-sync.log" --log-level INFO; then
+  
+  copy_end=$(date +%s)
+  copy_time=$((copy_end - copy_start))
+  echo "$(date +'%F %T') ERROR: Copy to staging failed after ${copy_time}s" >> "$DEBUG_LOG"
+  exit 1
+fi
+
+copy_end=$(date +%s)
+copy_time=$((copy_end - copy_start))
+echo "$(date +'%F %T') SUCCESS: Copy completed in ${copy_time}s" >> "$DEBUG_LOG"
 
 # ── Fast server-side rename to live ─────────────────────────────────────────
+move_start=$(date +%s)
 echo "$(date +'%F %T') ➡️  MOVETO staging → live" >> "$DEBUG_LOG"
-"$RCLONE" --config "$RCLONE_CFG" moveto "$dst_stage" "$dst_live" \
-    --log-file "$HOME/rclone-sync.log" --log-level INFO || {
+
+# Try moveto first (atomic rename if possible)
+if "$RCLONE" --config "$RCLONE_CFG" moveto "$dst_stage" "$dst_live" \
+    --timeout 5m --retries 5 --retries-sleep 10s \
+    --log-file "$HOME/rclone-sync.log" --log-level INFO; then
+  
+  move_end=$(date +%s)
+  move_time=$((move_end - move_start))
+  echo "$(date +'%F %T') SUCCESS: moveto completed in ${move_time}s" >> "$DEBUG_LOG"
+  
+else
+  
   echo "$(date +'%F %T') NOTICE: moveto failed – falling back to move" >> "$DEBUG_LOG"
-  "$RCLONE" --config "$RCLONE_CFG" move "$dst_stage/" "$dst_live" \
+  
+  if "$RCLONE" --config "$RCLONE_CFG" move "$dst_stage/" "$dst_live" \
       --delete-empty-src-dirs \
-      --log-file "$HOME/rclone-sync.log" --log-level INFO
-}
+      --timeout 10m --retries 8 --retries-sleep 15s \
+      --log-file "$HOME/rclone-sync.log" --log-level INFO; then
+    
+    move_end=$(date +%s)
+    move_time=$((move_end - move_start))
+    echo "$(date +'%F %T') SUCCESS: move completed in ${move_time}s" >> "$DEBUG_LOG"
+    
+  else
+    
+    move_end=$(date +%s)
+    move_time=$((move_end - move_start))
+    echo "$(date +'%F %T') ERROR: Both moveto and move failed after ${move_time}s" >> "$DEBUG_LOG"
+    
+    # Check if files are still in staging
+    if "$RCLONE" --config "$RCLONE_CFG" lsd "$dst_stage" >/dev/null 2>&1; then
+      echo "$(date +'%F %T') WARNING: Files remain in staging directory" >> "$DEBUG_LOG"
+    fi
+    
+    exit 1
+  fi
+fi
 
 echo "$(date +'%F %T') 🎉 DONE  $dst_live" >> "$DEBUG_LOG"
+
+# ── Trigger Radarr import after successful move ─────────────────────────────────────────
+if [[ "$label" == "Movies" || "$label" == "movies" || "$label" == "movie" || "$label" == "film" ]]; then
+    echo "$(date +'%F %T') 🔔 TRIGGER: Notifying Radarr of completed movie" >> "$DEBUG_LOG"
+    
+    # SSH to media server and trigger immediate import scan
+    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no MEDIA_SERVER "/home/USERNAME/radarr-manual-import.sh" 2>/dev/null &
+    
+    echo "$(date +'%F %T') 📡 NOTIFIED: Radarr import trigger sent" >> "$DEBUG_LOG"
+fi
 
 # ── Cleanup extracted files (optional) ──────────────────────────────────────
 # Uncomment the following lines if you want to delete extracted files after successful sync
