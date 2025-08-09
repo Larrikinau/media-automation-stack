@@ -40,11 +40,13 @@ scripts/download-server/rclone-sync.sh        # Added Radarr trigger + fixes
 
 **Media Server (Local)**:
 ```bash
-# New automated import script
-scripts/media-server/radarr-manual-import.sh  # Handles timeout recovery
+# New automated import scripts
+scripts/media-server/radarr-manual-import.sh  # Handles movie timeout recovery
+scripts/media-server/sonarr-manual-import.sh  # Handles TV show timeout recovery
 
-# Cron job (automatically installed)
+# Cron jobs (automatically installed)
 */15 * * * * /home/USERNAME/radarr-manual-import.sh
+*/15 * * * * /home/USERNAME/sonarr-manual-import.sh
 ```
 
 ## 🔧 Setup Instructions
@@ -60,20 +62,22 @@ ssh user@download-server "chmod +x ~/*.sh"
 
 **Media Server**:
 ```bash
-# Copy the import automation script
+# Copy the import automation scripts
 scp scripts/media-server/radarr-manual-import.sh user@media-server:~/
-ssh user@media-server "chmod +x ~/radarr-manual-import.sh"
+scp scripts/media-server/sonarr-manual-import.sh user@media-server:~/
+ssh user@media-server "chmod +x ~/radarr-manual-import.sh ~/sonarr-manual-import.sh"
 ```
 
 ### 2. Install Automated Import
 
 ```bash
-# Add cron job for automated scanning every 15 minutes
+# Add cron jobs for automated scanning every 15 minutes
 ssh user@media-server
 crontab -e
 
-# Add this line:
+# Add these lines:
 */15 * * * * /home/USERNAME/radarr-manual-import.sh
+*/15 * * * * /home/USERNAME/sonarr-manual-import.sh
 ```
 
 ### 3. Update rclone Remote Name
@@ -109,14 +113,16 @@ sed -i 's/MEDIA_SERVER/your_actual_remote_name/g' rclone-sync.sh
 ### Check if Automation is Working
 
 ```bash
-# Check if import script is installed
-crontab -l | grep radarr-manual-import
+# Check if import scripts are installed
+crontab -l | grep manual-import
 
 # Check recent log entries
 tail -f ~/radarr-manual-import.log
+tail -f ~/sonarr-manual-import.log
 
-# Manually trigger import scan (only scans incoming directory)
+# Manually trigger import scans (only scan incoming directories)
 ./radarr-manual-import.sh
+./sonarr-manual-import.sh
 ```
 
 ### Check for Stuck Extractions
