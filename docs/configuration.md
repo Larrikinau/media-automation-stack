@@ -269,27 +269,38 @@ On Upgrade: ✓
 - **Queue Directory**: `/usenet/queue` (active downloads)
 - **Temp Directory**: `/usenet/tmp` (extraction workspace)
 
-### Categories - DIRECT TO FINAL DESTINATIONS
+### Categories - STAGING DIRECTORIES (REQUIRED)
 
-**Important**: Unlike torrents, NZBGet delivers content DIRECTLY to final media directories:
+**CRITICAL FIX**: NZBGet must use staging directories, not final media directories, for proper Radarr/Sonarr import workflow:
 
 1. **TV Category**
    ```
-   Name: tv
-   Dest Dir: /tank/Media/TV Shows
+   Name: TV
+   Dest Dir: /tank/IncomingTV
+   Aliases: tv,series,television
    Unpack: Yes
    Post Script: (none or custom script)
    ```
 
 2. **Movies Category**
    ```
-   Name: movies
-   Dest Dir: /tank/Media/Movies
+   Name: Movies
+   Dest Dir: /tank/incomingmovies
+   Aliases: movie,film,cinema
    Unpack: Yes
    Post Script: (none or custom script)
    ```
 
-**Workflow**: NZBGet downloads to `/usenet/` → extracts/processes → moves DIRECTLY to `/tank/Media/` → Sonarr/Radarr detect completed files (no staging directories involved)
+**INCORRECT Configuration (breaks automation):**
+```
+# DON'T DO THIS - bypasses Radarr/Sonarr import process
+TV Dest Dir: /tank/Media/TV Shows
+Movies Dest Dir: /tank/Media/Movies
+```
+
+**Correct Workflow**: NZBGet downloads to `/usenet/` → extracts/processes → moves to STAGING (`/tank/IncomingTV/` or `/tank/incomingmovies/`) → Radarr/Sonarr detect and import → final organization to `/tank/Media/`
+
+This staging approach ensures proper metadata matching, naming conventions, and quality management through Radarr/Sonarr.
 
 ### Download Settings
 
