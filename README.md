@@ -194,6 +194,23 @@ Here's the high-level process:
 
 **🔧 Complete detailed instructions:** [Installation Guide](docs/installation-guide.md)
 
+## 🔒 Security Hardening
+
+**⚠️ RECOMMENDED:** Implement chroot jail for seedbox access restriction
+
+When using a remote seedbox, rclone SFTP connections typically have access to your entire filesystem. For enhanced security, implement a chroot jail that restricts seedbox access to only the required staging directories.
+
+### Security Benefits:
+- **Complete filesystem isolation** - seedbox can only access designated directories
+- **SFTP-only access** - no shell execution possible from seedbox  
+- **IP-based restrictions** - only applies to seedbox IP, local access remains unrestricted
+- **Zero lockout risk** - local admin access unaffected
+- **Persistent configuration** - survives reboots and system updates
+
+This approach provides much stronger security than SSH key restrictions alone while maintaining full compatibility with existing automation workflows.
+
+**📚 Complete implementation guide:** [Security Hardening: Chroot Jail Implementation](docs/security-hardening.md)
+
 ## 📁 Directory Structure & Component Mapping
 
 ```
@@ -229,6 +246,7 @@ media-automation-stack/
 ├── docs/
 │   ├── installation-guide.md     # 📚 Complete step-by-step setup
 │   ├── configuration.md          # 📚 Detailed component configuration
+│   ├── security-hardening.md     # 📚 Chroot jail implementation guide
 │   └── troubleshooting.md        # 📚 Common issues & solutions
 └── README.md                     # 📚 Main documentation & architecture
 ```
