@@ -236,9 +236,12 @@ if [[ "$label" == "Movies" || "$label" == "movies" || "$label" == "movie" || "$l
     echo "$(date +'%F %T') 🔔 TRIGGER: Notifying Radarr of completed movie" >> "$DEBUG_LOG"
     
     # SSH to media server and trigger immediate import scan
-    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no MEDIA_SERVER "/home/USERNAME/radarr-manual-import.sh" 2>/dev/null &
-    
-    echo "$(date +'%F %T') 📡 NOTIFIED: Radarr import trigger sent" >> "$DEBUG_LOG"
+    # Fixed: Use correct IP address and SSH key for reliable connection
+    if ssh -i ~/.ssh/MEDIA_SERVER_KEY -o ConnectTimeout=10 -o StrictHostKeyChecking=no USERNAME@MEDIA_SERVER_IP "/home/USERNAME/radarr-manual-import.sh" >> "$DEBUG_LOG" 2>&1; then
+        echo "$(date +'%F %T') 📡 SUCCESS: Radarr import trigger completed" >> "$DEBUG_LOG"
+    else
+        echo "$(date +'%F %T') ⚠️  WARNING: Radarr import trigger failed" >> "$DEBUG_LOG"
+    fi
 fi
 
 # ── Cleanup extracted files (optional) ──────────────────────────────────────
