@@ -362,7 +362,95 @@ cp scripts/media-server/* ~/
 chmod +x ~/*.sh
 ```
 
-### 6. Optimize SSH for rclone
+### 6. Set up rclone SFTP Server
+
+**Install rclone on media server:**
+
+```bash
+# Install rclone
+curl https://rclone.org/install.sh | sudo bash
+```
+
+**Create directory allowlist:**
+
+```bash
+# Create rclone configuration directory
+sudo mkdir -p /etc/rclone
+
+# Create allowlist file to restrict access to staging directories only
+sudo tee /etc/rclone/sftp-allowlist.rules > /dev/null <<EOF
+# Allow only staging directories
++ /IncomingTV/**
++ /IncomingTV_staging/**
++ /incomingmovies/**
++ /IncomingMovies_staging/**
++ /IncomingTV/
++ /IncomingTV_staging/
++ /incomingmovies/
++ /IncomingMovies_staging/
+- /**
+EOF
+```
+
+**Create systemd service:**
+
+```bash
+# Create rclone SFTP service
+sudo tee /etc/systemd/system/rclone-serve-sftp.service > /dev/null <<EOF
+[Unit]
+Description=rclone SFTP Server
+After=network.target
+
+[Service]
+User=mediauser
+Group=mediauser
+Type=simple
+ExecStart=/usr/bin/rclone serve sftp /tank \\
+  --addr 0.0.0.0:8222 \\
+  --authorized-keys /home/mediauser/.ssh/authorized_keys \\
+  --umask 0002 \\
+  --filter-from /etc/rclone/sftp-allowlist.rules \\
+  --log-file /home/mediauser/rclone-sftp.log \\
+  --log-level INFO
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start the service
+sudo systemctl enable rclone-serve-sftp
+sudo systemctl start rclone-serve-sftp
+
+# Check it's running
+sudo systemctl status rclone-serve-sftp
+```
+
+**Set up log rotation:**
+
+```bash
+# Create log rotation configuration
+sudo tee /etc/logrotate.d/rclone-sftp > /dev/null <<EOF
+/home/mediauser/rclone-sftp.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+```
+
+**Configure firewall:**
+
+```bash
+# Allow rclone SFTP port
+sudo ufw allow 8222/tcp  # rclone SFTP server
+```
+
+### 7. Optimize SSH for rclone
 
 Edit `/etc/ssh/sshd_config`:
 
@@ -377,7 +465,7 @@ Restart SSH service:
 sudo systemctl restart sshd
 ```
 
-### 7. Set up Cloudflare Tunnel for Overseerr (Optional but Recommended)
+### 8. Set up Cloudflare Tunnel for Overseerr (Optional but Recommended)
 
 Cloudflare tunnels provide secure external access to Overseerr without opening ports on your firewall.
 

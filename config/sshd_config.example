@@ -106,7 +106,7 @@ PrintMotd no
 # Format: start:rate:full (start accepting up to 100, then throttle 30% until 200)
 MaxStartups 100:30:200
 #PermitTunnel no
-#ChrootDirectory none
+# rclone SFTP optimization: Dedicated rclone service runs on port 8222
 #VersionAddendum none
 
 # no default banner path

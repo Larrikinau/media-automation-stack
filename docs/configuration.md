@@ -60,7 +60,56 @@ This document provides detailed configuration instructions for all components of
 
 ## rclone Configuration
 
-### SFTP Remote Setup
+The system uses a dual rclone setup: a dedicated SFTP server on the media server and an SFTP client on the download server.
+
+### Media Server: rclone SFTP Server
+
+**Service Configuration:**
+
+The media server runs a dedicated rclone SFTP service on port 8222:
+
+```bash
+# Systemd service: rclone-serve-sftp.service
+/usr/bin/rclone serve sftp /tank \
+  --addr 0.0.0.0:8222 \
+  --authorized-keys /home/mediauser/.ssh/authorized_keys \
+  --umask 0002 \
+  --filter-from /etc/rclone/sftp-allowlist.rules \
+  --log-file /home/mediauser/rclone-sftp.log \
+  --log-level INFO
+```
+
+**Directory Allowlist (/etc/rclone/sftp-allowlist.rules):**
+
+```bash
+# Allow only staging directories
++ /IncomingTV/**
++ /IncomingTV_staging/**
++ /incomingmovies/**
++ /IncomingMovies_staging/**
++ /IncomingTV/
++ /IncomingTV_staging/
++ /incomingmovies/
++ /IncomingMovies_staging/
+- /**
+```
+
+**Log Rotation (/etc/logrotate.d/rclone-sftp):**
+
+```bash
+/home/mediauser/rclone-sftp.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+```
+
+### Download Server: rclone SFTP Client
+
+**Remote Configuration:**
 
 ```bash
 rclone config
@@ -68,30 +117,44 @@ rclone config
 
 Configuration parameters:
 ```
-Name: MEDIA_SERVER
+Name: media_server_sftp (or MEDIA_SERVER)
 Type: sftp
 Host: your-media-server-ip-or-hostname
-User: your-username
-Port: 22
-Pass: (enter your password or use key-based auth)
+User: mediauser
+Port: 8222  # Important: Use dedicated SFTP port
+key_file: /home/downloaduser/.ssh/rclone-sftp
+shell_type: unix
 ```
+
+**Important Notes:**
+- Use port **8222** (not 22) to connect to the dedicated rclone SFTP server
+- Paths are relative to `/tank` (no `/tank` prefix needed in remote paths)
+- SSH key authentication is required (no password option)
 
 ### Performance Tuning
 
-Key parameters used in scripts:
+Key parameters used in automation scripts:
 ```bash
---transfers 12                    # Number of parallel transfers
---multi-thread-streams 24        # Streams per transfer
---multi-thread-cutoff 5M         # Minimum file size for multi-threading
---sftp-concurrency 96            # SFTP concurrent operations
---checkers 24                    # File existence checkers
---buffer-size 256M               # Transfer buffer size
---timeout 5m                     # Transfer timeout
---retries 8                      # Number of retries
---retries-sleep 10s              # Wait between retries
+--transfers 8                     # Number of parallel transfers
+--checkers 16                     # File existence checkers
+--sftp-concurrency 32             # SFTP concurrent operations
+--sftp-disable-hashcheck          # Skip hash verification for speed
+--size-only                       # Compare by size only (faster)
+--retries 5                       # Number of retries
+--low-level-retries 10            # Low-level retry attempts
+--retries-sleep 5s                # Wait between retries
+--sftp-set-modtime=false          # Don't set modification times
+--bwlimit off                     # No bandwidth limiting
+--fast-list                       # Faster directory listings
 ```
 
-Adjust these based on your network and server capabilities.
+**Server-Side Performance:**
+- Atomic server-side moves (moveto operations)
+- No data transfer for staging-to-live promotion
+- Optimized for concurrent connections (up to 96)
+- Comprehensive logging with automatic rotation
+
+Adjust client parameters based on your network capabilities and server performance.
 
 ## Sonarr Configuration
 

@@ -194,22 +194,23 @@ Here's the high-level process:
 
 **🔧 Complete detailed instructions:** [Installation Guide](docs/installation-guide.md)
 
-## 🔒 Security Hardening
+## 🔒 Security Architecture
 
-**⚠️ RECOMMENDED:** Implement chroot jail for seedbox access restriction
+**✅ CURRENT IMPLEMENTATION:** Dedicated rclone SFTP server with directory filtering
 
-When using a remote seedbox, rclone SFTP connections typically have access to your entire filesystem. For enhanced security, implement a chroot jail that restricts seedbox access to only the required staging directories.
+The system uses a dedicated rclone serve sftp instance on the media server that provides secure, isolated access to only the required staging directories without compromising system security.
 
 ### Security Benefits:
-- **Complete filesystem isolation** - seedbox can only access designated directories
-- **SFTP-only access** - no shell execution possible from seedbox  
-- **IP-based restrictions** - only applies to seedbox IP, local access remains unrestricted
-- **Zero lockout risk** - local admin access unaffected
-- **Persistent configuration** - survives reboots and system updates
+- **Directory filtering** - rclone serves only designated staging directories via allowlist
+- **Dedicated SFTP service** - runs on custom port, separate from system SSH
+- **No shell access** - pure SFTP file transfer only, no command execution
+- **User isolation** - runs as dedicated user with minimal privileges
+- **Atomic operations** - server-side moves prevent incomplete transfers
+- **Comprehensive logging** - all operations logged with automatic rotation
 
-This approach provides much stronger security than SSH key restrictions alone while maintaining full compatibility with existing automation workflows.
+This approach provides robust security while maintaining excellent performance and reliability for automated workflows.
 
-**📚 Complete implementation guide:** [Security Hardening: Chroot Jail Implementation](docs/security-hardening.md)
+**📚 Complete implementation guide:** [Security Architecture: rclone SFTP Server](docs/security-hardening.md)
 
 ## 📁 Directory Structure & Component Mapping
 
@@ -246,7 +247,7 @@ media-automation-stack/
 ├── docs/
 │   ├── installation-guide.md     # 📚 Complete step-by-step setup
 │   ├── configuration.md          # 📚 Detailed component configuration
-│   ├── security-hardening.md     # 📚 Chroot jail implementation guide
+│   ├── security-hardening.md     # 📚 rclone SFTP server security guide
 │   └── troubleshooting.md        # 📚 Common issues & solutions
 └── README.md                     # 📚 Main documentation & architecture
 ```

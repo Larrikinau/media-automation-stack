@@ -15,9 +15,9 @@ The system requires secure communication between:
 **Critical**: The external download server's IP address must be whitelisted on your home network firewall/router.
 
 #### Why This is Required:
-- rclone uses SFTP to transfer files from the download server to your media server
+- rclone SFTP client connects to dedicated rclone SFTP server on port 8222
 - High-volume transfers with up to 96 concurrent SFTP connections
-- Firewalls may interpret this as a potential attack without whitelisting
+- Firewalls/IDS may interpret this as a potential attack without whitelisting
 - Failed connections can cause transfer failures and queue backups
 
 #### Implementation:
@@ -32,7 +32,7 @@ The system requires secure communication between:
    - Action: Accept
    - Source: [Download Server IP]
    - Destination: [Media Server IP]
-   - Port: 22 (SSH/SFTP)
+   - Port: 8222 (rclone SFTP)
 ```
 
 **pfSense**:
@@ -43,7 +43,7 @@ The system requires secure communication between:
    - Add rule allowing SSH from download server
    - Source: Download Server IP
    - Destination: Media Server IP
-   - Port: 22
+   - Port: 8222
 ```
 
 **Generic Router/Firewall**:
@@ -53,7 +53,7 @@ The system requires secure communication between:
    - Source IP: [Download Server Public IP]
    - Destination: [Media Server Local IP]
    - Protocol: TCP
-   - Port: 22
+   - Port: 8222
    - Action: Allow
 ```
 
@@ -68,7 +68,8 @@ The system requires secure communication between:
 #### Media Server (Internal)
 ```bash
 # Core services
-22/tcp    # SSH (for rclone SFTP transfers)
+22/tcp    # SSH (system administration)
+8222/tcp  # rclone SFTP server (for media transfers)
 8989/tcp  # Sonarr web interface
 7878/tcp  # Radarr web interface
 9696/tcp  # Prowlarr web interface
@@ -200,7 +201,7 @@ Generate and deploy SSH keys for passwordless authentication:
 ssh-keygen -t ed25519 -f ~/.ssh/media_server_key
 
 # Copy public key to media server
-ssh-copy-id -i ~/.ssh/media_server_key.pub user@media-server
+ssh-copy-id -i ~/.ssh/media_server_key.pub mediauser@media-server
 ```
 
 **Update rclone config to use key:**
